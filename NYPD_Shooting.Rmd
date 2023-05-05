@@ -21,14 +21,14 @@ This document is describing the work on NYPD shooting incident project. Data use
 
 - Importing libraries.
 
-```{r, echo=FALSE, results='hide'}
+```{r}
 library(tidyverse)
 library(lubridate)
 ```
 
 - Loading Data.
 
-```{r, echo=FALSE, results='hide'}
+```{r}
 data_url <- "https://data.cityofnewyork.us/api/views/833y-fsy8/rows.csv?accessType=DOWNLOAD"
 nypd_shooting <- read_csv(data_url)
 ```
@@ -37,29 +37,29 @@ nypd_shooting <- read_csv(data_url)
 
 - Verify imported data variables and data types.
 
-```{r, echo=FALSE}
+```{r}
 spec(nypd_shooting)
 ```
 
 - Change OCCUR_DATE variable to date type.
 
-```{r, echo=FALSE, results='hide'}
+```{r}
 nypd_shooting <- nypd_shooting %>% mutate(OCCUR_DATE = mdy(OCCUR_DATE))
 ```
 
 - Select only columns that we will use.
 
-```{r, echo=FALSE, results='hide'}
-nypd_shooting_final <- nypd_shooting[c("OCCUR_DATE", "BORO", "VIC_RACE", "STATISTICAL_MURDER_FLAG")]
+```{r}
+nypd_shooting_final <- nypd_shooting[c("OCCUR_DATE", "BORO")]
 ```
 
 # Add Visualizations and Analysis (Project Step 3)
 
 - Compare number of incidents per year.
 
-```{r, echo=FALSE, results='hide'}
+```{r}
 nypd_shooting_year <- nypd_shooting_final %>% 
-  group_by(VIC_RACE, BORO, OCCUR_DATE, STATISTICAL_MURDER_FLAG) %>%
+  group_by(BORO, OCCUR_DATE) %>%
   summarise(Frequency=n()) %>% 
   group_by(year = lubridate::floor_date(OCCUR_DATE, 'year')) %>% 
   summarise(occur_total = sum(Frequency)) %>% 
@@ -71,7 +71,7 @@ ggplot(data = nypd_shooting_year, mapping = aes(x=year, y=occur_total)) +
 
 - Compare number of incidents per Boro.
 
-```{r, echo=FALSE, results='hide'}
+```{r}
 ggplot(nypd_shooting_final, aes(x = BORO)) +
   geom_bar() +
   labs(title = "Boros",
@@ -82,7 +82,7 @@ ggplot(nypd_shooting_final, aes(x = BORO)) +
 
 - Try to predict the increase in shooting incidents over time. (creating a model).
 
-```{r, echo=FALSE, results='hide'}
+```{r}
 mod <- lm(occur_total ~ year, data=nypd_shooting_year)
 nypd_shooting_year <- nypd_shooting_year %>% mutate(pred = predict(mod))
 nypd_shooting_year %>% ggplot() + geom_point(aes(x= year, y= occur_total), color = "blue") + geom_point(aes(x=year, y=pred), color="red")
