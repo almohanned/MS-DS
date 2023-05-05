@@ -1,0 +1,95 @@
+---
+title: "NYPD Shooting Incident Data"
+author: "Almohanned Harfoush"
+date: "2023-05-03"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## NYPD Shooting Incident
+
+This document is describing the work on NYPD shooting incident project. Data used in this project is imported from https://catalog.data.gov/dataset and we used the dataset titled NYPD Shooting Incident Data (Historic). 
+
+  Data is list of every shooting incident that occurred in NYC going back to 2006 through the end of the previous calendar year. you can find more details from https://catalog.data.gov/dataset/nypd-shooting-incident-data-historic
+
+# Setup (Project Step 1)
+
+- Importing libraries.
+
+```{r, echo=FALSE, results='hide'}
+library(tidyverse)
+library(lubridate)
+```
+
+- Loading Data.
+
+```{r, echo=FALSE, results='hide'}
+data_url <- "https://data.cityofnewyork.us/api/views/833y-fsy8/rows.csv?accessType=DOWNLOAD"
+nypd_shooting <- read_csv(data_url)
+```
+
+# Tidy and Transform Data (Project Step 2)
+
+- Verify imported data variables and data types.
+
+```{r, echo=FALSE}
+spec(nypd_shooting)
+```
+
+- Change OCCUR_DATE variable to date type.
+
+```{r, echo=FALSE, results='hide'}
+nypd_shooting <- nypd_shooting %>% mutate(OCCUR_DATE = mdy(OCCUR_DATE))
+```
+
+- Select only columns that we will use.
+
+```{r, echo=FALSE, results='hide'}
+nypd_shooting_final <- nypd_shooting[c("OCCUR_DATE", "BORO", "VIC_RACE", "STATISTICAL_MURDER_FLAG")]
+```
+
+# Add Visualizations and Analysis (Project Step 3)
+
+- Compare number of incidents per year.
+
+```{r, echo=FALSE, results='hide'}
+nypd_shooting_year <- nypd_shooting_final %>% 
+  group_by(VIC_RACE, BORO, OCCUR_DATE, STATISTICAL_MURDER_FLAG) %>%
+  summarise(Frequency=n()) %>% 
+  group_by(year = lubridate::floor_date(OCCUR_DATE, 'year')) %>% 
+  summarise(occur_total = sum(Frequency)) %>% 
+  select(year, occur_total) %>% ungroup()
+
+ggplot(data = nypd_shooting_year, mapping = aes(x=year, y=occur_total)) +
+  geom_bar(stat='identity') +  geom_text(aes(label=occur_total))
+```
+
+- Compare number of incidents per Boro.
+
+```{r, echo=FALSE, results='hide'}
+ggplot(nypd_shooting_final, aes(x = BORO)) +
+  geom_bar() +
+  labs(title = "Boros",
+       x = "Boros",
+       y = "Incidents") +
+  theme_minimal()
+```
+
+- Try to predict the increase in shooting incidents over time. (creating a model).
+
+```{r, echo=FALSE, results='hide'}
+mod <- lm(occur_total ~ year, data=nypd_shooting_year)
+nypd_shooting_year <- nypd_shooting_year %>% mutate(pred = predict(mod))
+nypd_shooting_year %>% ggplot() + geom_point(aes(x= year, y= occur_total), color = "blue") + geom_point(aes(x=year, y=pred), color="red")
+```
+
+You can simply notice from this plot. that in recent years 2020, 2021, 2022. has clearly exceeded the expected numbers of incidents. which might be interesting to investigate.
+
+# Add Bias Identification (Project Step 4)
+
+the source of bias in this analysis might come clearly from ignoring boro population and race and gender distribution. we have used only the number of incidents, but we did not make the required connection between boro population and the number of incidents. that will make the assumption from the second graph 'number of incidents per Boro' that Brooklyn is the most dangerous or violent, might not be fair.
